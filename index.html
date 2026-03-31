@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>狗宫专属5V5分组｜v1.8</title>
+<title>狗宫专属5V5分组｜v1.9</title>
 <style>
     * {
         margin: 0;
@@ -134,7 +134,7 @@
 
     .member-item {
         display: inline-block;
-        padding: 6px 12px;
+        padding: 6px 18px 6px 12px;
         margin: 4px;
         border-radius: 15px;
         background-color: #f0f0f0;
@@ -177,12 +177,20 @@
         color: white;
     }
 
+    /* 删除按钮 右上角 更小 */
     .delete-btn {
-        margin-left: 6px;
-        color: #ff4d4f;
-        font-weight: bold;
+        position: absolute;
+        top: -6px;
+        right: -2px;
+        width: 14px;
+        height: 14px;
+        line-height: 12px;
+        text-align: center;
+        background: #ff4d4f;
+        color: #fff;
+        font-size: 10px;
+        border-radius: 50%;
         cursor: pointer;
-        font-size: 12px;
     }
 
     .common-pool {
@@ -291,7 +299,7 @@
 </head>
 <body>
     <div class="card">
-        <h1 class="title">狗宫专属5V5分组｜v1.8</h1>
+        <h1 class="title">狗宫专属5V5分组｜v1.9</h1>
         <div class="mode-switch">
             <button class="mode-btn active" id="captainMode">队长模式</button>
             <button class="mode-btn" id="normalMode">非队长模式</button>
@@ -308,6 +316,7 @@
                     <button class="tag-btn purple" id="setCaptain2">紫队队长</button>
                     <button class="tag-btn green" id="setBind">捆绑同组</button>
                     <button class="tag-btn gray" id="setSleep">困了/观战</button>
+                    <button class="tag-btn" id="clearMark" style="background:#ff4d4f;color:white">清除标记</button>
                 </div>
                 <div class="members-list" id="membersList"></div>
                 <button class="btn" id="clearBtn" style="background-color: #ff4d4f;">清空所有成员</button>
@@ -340,6 +349,7 @@
             <p>• 非队长模式：所有成员随机分配，完全公平</p>
             <p>• 捆绑功能：标记的成员会被分在同一队（最多3人）</p>
             <p>• 点击成员进行选择，再次点击取消选择</p>
+            <p>• 清除标记：一键清空队长、捆绑、困了/观战状态</p>
         </div>
         <div class="version">狗宫专属 | 公平竞技 | 禁止作弊</div>
     </div>
@@ -362,6 +372,7 @@
     const memberInput = document.getElementById('memberInput');
     const addBtn = document.getElementById('addBtn');
     const clearBtn = document.getElementById('clearBtn');
+    const clearMark = document.getElementById('clearMark');
     const setCaptain1 = document.getElementById('setCaptain1');
     const setCaptain2 = document.getElementById('setCaptain2');
     const setBind = document.getElementById('setBind');
@@ -471,6 +482,17 @@
         clearResult();
     }
 
+    // 一键清除所有标记
+    function clearAllMarks() {
+        captain1 = null;
+        captain2 = null;
+        bindList = [];
+        sleepList = [];
+        tempSelected = [];
+        renderMembers();
+        alert("已清除所有标记！");
+    }
+
     function setCaptain1Action() {
         if (tempSelected.length !== 1) {
             alert("请选择1个成员作为蓝队队长");
@@ -567,7 +589,8 @@
             blue.push(captain1);
             purple.push(captain2);
 
-            let bindMembers = bindList.filter(b => activeMembers.includes(b));
+            // 去重：队长已在队伍中，捆绑列表排除队长，避免重复计数
+            let bindMembers = bindList.filter(b => activeMembers.includes(b) && b !== captain1 && b !== captain2);
             let normalMembers = activeMembers.filter(m => m !== captain1 && m !== captain2 && !bindMembers.includes(m));
 
             if (bindMembers.length > 0) {
@@ -613,7 +636,7 @@
     }
 
     function copyResult() {
-        let text = "蓝队：\n" + Array.from(blueTeam.children).map(i => i.textContent).join("\n") + "\n\n紫队：\n" + Array.from(purpleTeam.children).map(i => i.textContent).join("\n") + "\n\n困了/观战：\n" + Array.from(sleepTeam.children).map(i => i.textContent).join("\n");
+        let text = "蓝队：\n" + Array.from(blueTeam.children).map(i => i.textContent).join("\n") + "\n\n紫队：\n" + Array.from(purpleTeam.children).map(i => i.textContent).join("\n") + "\n\n困了/观战：\n" + Array.from(sleepTeam.children).map(i => i.textContent).join("\n";
         navigator.clipboard.writeText(text).then(() => {
             alert("分组结果已复制到剪贴板");
         }).catch(err => {
@@ -634,6 +657,7 @@
         if (e.key === 'Enter') addMember();
     });
     clearBtn.addEventListener('click', clearMembers);
+    clearMark.addEventListener('click', clearAllMarks);
     setCaptain1.addEventListener('click', setCaptain1Action);
     setCaptain2.addEventListener('click', setCaptain2Action);
     setBind.addEventListener('click', setBindAction);
