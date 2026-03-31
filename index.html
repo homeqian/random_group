@@ -108,15 +108,6 @@
         flex-wrap: wrap;
     }
 
-    .tag-btn {
-        padding: 6px 12px;
-        border: none;
-        border-radius: 20px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s;
-    }
-
     .tag-btn.blue { background-color: #409eff; color: white; }
     .tag-btn.purple { background-color: #9e64f5; color: white; }
     .tag-btn.green { background-color: #85ce61; color: white; }
@@ -159,7 +150,6 @@
         font-weight: bold;
     }
 
-    /* 紫队队长醒目颜色 */
     .member-item.captain2 {
         background-color: #7B2CBF;
         color: white;
@@ -177,7 +167,6 @@
         color: white;
     }
 
-    /* 删除按钮 右上角 更小 */
     .delete-btn {
         position: absolute;
         top: -6px;
@@ -362,7 +351,7 @@
     let captain1 = null;
     let captain2 = null;
     let bindList = [];
-    let sleepList = [];
+    let sleepList = []; // 仅保存手动标记为观战的人
     let tempSelected = [];
     let currentMode = "captain";
 
@@ -482,7 +471,6 @@
         clearResult();
     }
 
-    // 一键清除所有标记
     function clearAllMarks() {
         captain1 = null;
         captain2 = null;
@@ -568,20 +556,25 @@
 
     function start5v5() {
         clearResult();
-        let activeMembers = members.filter(m => !sleepList.includes(m.name)).map(m => m.name);
-        if (activeMembers.length < 2) {
+        
+        // 只排除手动标记观战的人，其余所有人每次都重新随机
+        let allPlayers = members
+            .filter(m => !sleepList.includes(m.name))
+            .map(m => m.name);
+
+        if (allPlayers.length < 2) {
             alert("至少需要2名参战成员");
             return;
         }
 
-        let blue = [], purple = [];
+        let blue = [], purple = [], bench = [];
 
         if (currentMode === "captain") {
             if (!captain1 || !captain2) {
                 alert("请设置两名队长");
                 return;
             }
-            if (!activeMembers.includes(captain1) || !activeMembers.includes(captain2)) {
+            if (!allPlayers.includes(captain1) || !allPlayers.includes(captain2)) {
                 alert("队长不能是困了/观战成员");
                 return;
             }
@@ -589,34 +582,34 @@
             blue.push(captain1);
             purple.push(captain2);
 
-            // 去重：队长已在队伍中，捆绑列表排除队长，避免重复计数
-            let bindMembers = bindList.filter(b => activeMembers.includes(b) && b !== captain1 && b !== captain2);
-            let normalMembers = activeMembers.filter(m => m !== captain1 && m !== captain2 && !bindMembers.includes(m));
+            let bindMembers = bindList.filter(b => b !== captain1 && b !== captain2);
+            let normalPlayers = allPlayers.filter(m => 
+                m !== captain1 && 
+                m !== captain2 && 
+                !bindMembers.includes(m)
+            );
 
             if (bindMembers.length > 0) {
-                let team = Math.random() > 0.5 ? blue : purple;
-                bindMembers.forEach(b => team.push(b));
+                let targetTeam = Math.random() > 0.5 ? blue : purple;
+                bindMembers.forEach(p => targetTeam.push(p));
             }
 
-            normalMembers.sort(() => Math.random() - 0.5);
-
-            for (let member of normalMembers) {
-                if (blue.length < 5) blue.push(member);
-                else if (purple.length < 5) purple.push(member);
-                else sleepList.push(member);
+            let shuffled = [...normalPlayers].sort(() => Math.random() - 0.5);
+            for (let p of shuffled) {
+                if (blue.length < 5) blue.push(p);
+                else if (purple.length < 5) purple.push(p);
+                else bench.push(p);
             }
         } else {
-            let shuffled = activeMembers.sort(() => Math.random() - 0.5);
+            let shuffled = [...allPlayers].sort(() => Math.random() - 0.5);
             blue = shuffled.slice(0, 5);
             purple = shuffled.slice(5, 10);
-            if (shuffled.length > 10) {
-                sleepList = [...sleepList, ...shuffled.slice(10)];
-            }
+            bench = shuffled.slice(10);
         }
 
         renderTeam(blue, blueTeam);
         renderTeam(purple, purpleTeam);
-        renderTeam(sleepList, sleepTeam);
+        renderTeam(bench, sleepTeam); // bench 只作为本次观战展示，不写入永久列表
     }
 
     function renderTeam(team, element) {
@@ -667,7 +660,6 @@
     captainMode.addEventListener('click', () => switchMode('captain'));
     normalMode.addEventListener('click', () => switchMode('normal'));
 
-    // 初始化加载常用名单
     initCommonPool();
     renderMembers();
     switchMode('captain');
