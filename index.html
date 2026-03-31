@@ -108,11 +108,11 @@
         flex-wrap: wrap;
     }
 
-    /* 🔥 全部统一圆角椭圆样式，完美融合界面 */
+    /* ✅ 统一五个标签按钮样式 */
     .tag-btn {
-        padding: 6px 14px;
+        padding: 10px 14px;
         border: none;
-        border-radius: 20px;
+        border-radius: 6px;
         cursor: pointer;
         font-size: 14px;
         transition: all 0.2s;
@@ -154,12 +154,12 @@
         border: 1px solid #409eff;
     }
 
+    /* 队长颜色 */
     .member-item.captain1 {
         background-color: #409eff;
         color: white;
         font-weight: bold;
     }
-
     .member-item.captain2 {
         background-color: #7B2CBF;
         color: white;
@@ -167,14 +167,30 @@
         border: 2px solid #5c1a99;
     }
 
+    /* 普通捆绑绿色 */
     .member-item.bind {
-        background-color: #85ce61;
-        color: white;
+        background-color: #85ce61 !important;
+        color: white !important;
+    }
+
+    /* 🔥 跟随队长1（蓝色）的捆绑 */
+    .member-item.captain1-bind {
+        background-color: #409eff !important;
+        color: white !important;
+        font-weight: bold;
+    }
+
+    /* 🔥 跟随队长2（紫色）的捆绑 */
+    .member-item.captain2-bind {
+        background-color: #7B2CBF !important;
+        color: white !important;
+        font-weight: bold;
+        border: 2px solid #5c1a99;
     }
 
     .member-item.sleep {
-        background-color: #909399;
-        color: white;
+        background-color: #909399 !important;
+        color: white !important;
     }
 
     .delete-btn {
@@ -219,7 +235,7 @@
     }
 
     .common-item:hover {
-        background-color: #bae1ff;
+        background-color: #baeff0;
     }
 
     .result-group {
@@ -311,7 +327,7 @@
         </div>
         <div class="main-content">
             <div class="left-section">
-                <h3 class="section-title" id="memberListTitle">已加入成员（0人）</h3>
+                <h3 class="section-title" id="memberListTitle">已加入成员（${members.length}人）</h3>
                 <div class="input-group">
                     <input type="text" id="memberInput" placeholder="输入成员名称，按回车添加">
                     <button class="btn" id="addBtn">添加</button>
@@ -352,7 +368,7 @@
         <div class="tips">
             <p>• 队长模式：需设置两名队长，系统公平分配队员</p>
             <p>• 非队长模式：所有成员随机分配，完全公平</p>
-            <p>• 捆绑功能：标记的成员会被分在同一队（最多3人）</p>
+            <p>• 捆绑功能：支持多组捆绑，每组必定同队</p>
             <p>• 点击成员进行选择，再次点击取消选择</p>
             <p>• 清除标记：一键清空队长、捆绑、困了/观战状态</p>
         </div>
@@ -366,322 +382,277 @@
     let members = [];
     let captain1 = null;
     let captain2 = null;
-    let bindList = [];
+    let bindGroups = [];
     let sleepList = [];
     let tempSelected = [];
     let currentMode = "captain";
 
-    const memberListTitle = document.getElementById('memberListTitle');
-    const membersList = document.getElementById('membersList');
     const commonPool = document.getElementById('commonPool');
-    const memberInput = document.getElementById('memberInput');
-    const addBtn = document.getElementById('addBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const clearMark = document.getElementById('clearMark');
-    const setCaptain1 = document.getElementById('setCaptain1');
-    const setCaptain2 = document.getElementById('setCaptain2');
-    const setBind = document.getElementById('setBind');
-    const setSleep = document.getElementById('setSleep');
-    const startBtn = document.getElementById('startBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const blueTeam = document.getElementById('blueTeam');
-    const purpleTeam = document.getElementById('purpleTeam');
-    const sleepTeam = document.getElementById('sleepTeam');
-    const captainMode = document.getElementById('captainMode');
-    const normalMode = document.getElementById('normalMode');
 
     function updateMemberCount() {
-        memberListTitle.textContent = `已加入成员（${members.length}人）`;
+        document.getElementById('memberListTitle').textContent = `已加入成员（${members.length}人）`;
     }
 
-    function initCommonPool() {
+    function renderCommonPool() {
+        if (!commonPool) return;
         commonPool.innerHTML = '';
-        commonPoolList.forEach(item => {
-            let div = document.createElement('div');
-            div.className = 'common-item';
-            if (members.some(m => m.name === item)) {
-                div.classList.add('added');
+        commonPoolList.forEach(name => {
+            const el = document.createElement('div');
+            el.className = 'common-item';
+            if (members.some(m => m.name === name)) {
+                el.classList.add('added');
             }
-            div.textContent = item;
-            div.onclick = () => addCommonToPool(item);
-            commonPool.appendChild(div);
+            el.textContent = name;
+            el.onclick = () => {
+                if (members.some(m => m.name === name)) {
+                    alert('该成员已存在');
+                    return;
+                }
+                members.push({ name });
+                renderAll();
+            };
+            commonPool.appendChild(el);
         });
     }
 
     function renderMembers() {
-        membersList.innerHTML = '';
-        members.forEach(member => {
-            let div = document.createElement('div');
-            div.className = 'member-item';
-            div.textContent = member.name;
-            if (member.name === captain1) div.classList.add('captain1');
-            if (member.name === captain2) div.classList.add('captain2');
-            if (bindList.includes(member.name)) div.classList.add('bind');
-            if (sleepList.includes(member.name)) div.classList.add('sleep');
-            if (tempSelected.includes(member.name)) div.classList.add('selected');
+        const list = document.getElementById('membersList');
+        list.innerHTML = '';
+
+        // 🔥 判断谁是队长的捆绑
+        const captain1BindMembers = bindGroups.flat().filter(m => 
+            bindGroups.some(g => g.includes(m) && g.includes(captain1))
+        );
+        const captain2BindMembers = bindGroups.flat().filter(m => 
+            bindGroups.some(g => g.includes(m) && g.includes(captain2))
+        );
+        const normalBind = bindGroups.flat().filter(m => 
+            !captain1BindMembers.includes(m) && !captain2BindMembers.includes(m)
+        );
+
+        members.forEach(m => {
+            const item = document.createElement('div');
+            item.className = 'member-item';
+            item.textContent = m.name;
+
+            // 队长
+            if (m.name === captain1) item.classList.add('captain1');
+            if (m.name === captain2) item.classList.add('captain2');
+
+            // 🔥 捆绑颜色逻辑：队长捆绑→队长色，普通→绿色
+            if (captain1BindMembers.includes(m.name)) {
+                item.classList.add('captain1-bind');
+            } else if (captain2BindMembers.includes(m.name)) {
+                item.classList.add('captain2-bind');
+            } else if (normalBind.includes(m.name)) {
+                item.classList.add('bind');
+            }
+
+            // 观战
+            if (sleepList.includes(m.name)) item.classList.add('sleep');
+            if (tempSelected.includes(m.name)) item.classList.add('selected');
             
-            let deleteBtn = document.createElement('span');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.textContent = '×';
-            deleteBtn.onclick = (e) => {
+            const del = document.createElement('span');
+            del.className = 'delete-btn';
+            del.textContent = '×';
+            del.onclick = e => {
                 e.stopPropagation();
-                deleteMember(member.name);
+                members = members.filter(x => x.name !== m.name);
+                if (captain1 === m.name) captain1 = null;
+                if (captain2 === m.name) captain2 = null;
+                bindGroups = bindGroups.map(g => g.filter(n => n !== m.name)).filter(g => g.length);
+                sleepList = sleepList.filter(n => n !== m.name);
+                tempSelected = tempSelected.filter(n => n !== m.name);
+                renderAll();
             };
-            div.appendChild(deleteBtn);
-            
-            div.onclick = () => toggleSelect(member.name);
-            membersList.appendChild(div);
+            item.appendChild(del);
+            item.onclick = () => {
+                const i = tempSelected.indexOf(m.name);
+                i > -1 ? tempSelected.splice(i, 1) : tempSelected.push(m.name);
+                renderAll();
+            };
+            list.appendChild(item);
         });
-        updateMemberCount();
-        initCommonPool();
     }
 
-    function toggleSelect(name) {
-        let index = tempSelected.indexOf(name);
-        if (index > -1) tempSelected.splice(index, 1);
-        else tempSelected.push(name);
+    function renderAll() {
         renderMembers();
+        renderCommonPool();
+        updateMemberCount();
     }
 
     function addMember() {
-        let name = memberInput.value.trim();
-        if (!name) {
-            alert("请输入成员名称");
-            return;
-        }
-        if (members.some(m => m.name === name)) {
-            alert("该成员已存在");
-            memberInput.value = '';
-            return;
-        }
+        const ipt = document.getElementById('memberInput');
+        const name = ipt.value.trim();
+        if (!name) { alert('请输入名称'); return; }
+        if (members.some(m => m.name === name)) { alert('已存在'); ipt.value=''; return; }
         members.push({ name });
-        memberInput.value = '';
-        renderMembers();
-    }
-
-    function addCommonToPool(name) {
-        if (members.some(m => m.name === name)) {
-            alert("该成员已添加");
-            return;
-        }
-        members.push({ name });
-        renderMembers();
-    }
-
-    function deleteMember(name) {
-        if (!confirm("确定要删除该成员吗？")) return;
-        members = members.filter(m => m.name !== name);
-        if (captain1 === name) captain1 = null;
-        if (captain2 === name) captain2 = null;
-        bindList = bindList.filter(b => b !== name);
-        sleepList = sleepList.filter(s => s !== name);
-        tempSelected = tempSelected.filter(s => s !== name);
-        renderMembers();
+        ipt.value = '';
+        renderAll();
     }
 
     function clearMembers() {
-        if (!confirm("确定要清空所有成员吗？")) return;
-        members = [];
-        captain1 = null;
-        captain2 = null;
-        bindList = [];
-        sleepList = [];
-        tempSelected = [];
-        renderMembers();
-        clearResult();
+        if (!confirm('确定清空？')) return;
+        members=[]; captain1=null; captain2=null; bindGroups=[]; sleepList=[]; tempSelected=[];
+        renderAll();
+        document.getElementById('blueTeam').innerHTML='';
+        document.getElementById('purpleTeam').innerHTML='';
+        document.getElementById('sleepTeam').innerHTML='';
     }
 
     function clearAllMarks() {
-        captain1 = null;
-        captain2 = null;
-        bindList = [];
-        sleepList = [];
-        tempSelected = [];
-        renderMembers();
-        alert("已清除所有标记！");
+        captain1=null; captain2=null; bindGroups=[]; sleepList=[]; tempSelected=[];
+        renderAll();
+        alert('已清除所有标记');
     }
 
-    function setCaptain1Action() {
-        if (tempSelected.length !== 1) {
-            alert("请选择1个成员作为蓝队队长");
-            return;
-        }
-        let name = tempSelected[0];
-        if (sleepList.includes(name)) {
-            alert("困了/观战成员不能设置为队长");
-            return;
-        }
-        if (name === captain2) {
-            alert("该成员已为紫队队长");
-            return;
-        }
-        captain1 = name;
-        tempSelected = [];
-        renderMembers();
+    function setCap1() {
+        if (tempSelected.length !==1) { alert('选择1人'); return; }
+        const n = tempSelected[0];
+        if (sleepList.includes(n) || n===captain2) { alert('无法设置'); return; }
+        captain1 = n; tempSelected=[]; renderAll();
+    }
+    function setCap2() {
+        if (tempSelected.length !==1) { alert('选择1人'); return; }
+        const n = tempSelected[0];
+        if (sleepList.includes(n) || n===captain1) { alert('无法设置'); return; }
+        captain2 = n; tempSelected=[]; renderAll();
     }
 
-    function setCaptain2Action() {
-        if (tempSelected.length !== 1) {
-            alert("请选择1个成员作为紫队队长");
-            return;
+    function setBind() {
+        if (tempSelected.length<1||tempSelected.length>3) { alert('1-3人'); return; }
+        const allBind = bindGroups.flat();
+        for (const n of tempSelected) {
+            if (sleepList.includes(n) || allBind.includes(n)) { alert('无法捆绑'); return; }
         }
-        let name = tempSelected[0];
-        if (sleepList.includes(name)) {
-            alert("困了/观战成员不能设置为队长");
-            return;
-        }
-        if (name === captain1) {
-            alert("该成员已为蓝队队长");
-            return;
-        }
-        captain2 = name;
-        tempSelected = [];
-        renderMembers();
+        bindGroups.push([...tempSelected]);
+        tempSelected=[]; renderAll();
     }
 
-    function setBindAction() {
-        if (tempSelected.length === 0) {
-            alert("请选择要捆绑的成员");
-            return;
-        }
-        if (tempSelected.length > 3) {
-            alert("最多只能捆绑3个成员");
-            return;
-        }
-        tempSelected.forEach(name => {
-            if (sleepList.includes(name)) {
-                alert("困了/观战成员不能捆绑");
-                return;
-            }
-        });
-        bindList = [...tempSelected];
-        tempSelected = [];
-        renderMembers();
-    }
-
-    function setSleepAction() {
-        if (tempSelected.length === 0) {
-            alert("请选择要设置为困了/观战的成员");
-            return;
-        }
-        tempSelected.forEach(name => {
-            if (captain1 === name) captain1 = null;
-            if (captain2 === name) captain2 = null;
+    function setSleep() {
+        if (tempSelected.length<1) { alert('选择成员'); return; }
+        tempSelected.forEach(n=>{
+            if (captain1===n) captain1=null;
+            if (captain2===n) captain2=null;
         });
         sleepList = [...tempSelected];
-        bindList = bindList.filter(b => !tempSelected.includes(b));
-        tempSelected = [];
-        renderMembers();
+        bindGroups = bindGroups.map(g=>g.filter(n=>!tempSelected.includes(n))).filter(g=>g.length);
+        tempSelected=[]; renderAll();
     }
 
-    function start5v5() {
-        clearResult();
-        
-        let allPlayers = members
-            .filter(m => !sleepList.includes(m.name))
-            .map(m => m.name);
+    // 🔥 队长捆绑组强制同队
+    function assignCaptainBindGroup(team, captain) {
+        if (!captain) return;
+        for (const group of bindGroups) {
+            if (group.includes(captain)) {
+                const safeMembers = group.filter(m => !team.includes(m));
+                team.push(...safeMembers);
+            }
+        }
+    }
 
-        if (allPlayers.length < 2) {
-            alert("至少需要2名参战成员");
-            return;
+    // 普通捆绑组
+    function assignNormalBindGroups(blue, purple) {
+        const normalGroups = bindGroups.filter(g => 
+            !g.includes(captain1) && !g.includes(captain2)
+        );
+        for (const g of normalGroups) {
+            const safeGroup = g.filter(n => !blue.includes(n) && !purple.includes(n));
+            const s = safeGroup.length;
+            if (s === 0) continue;
+
+            if (blue.length + s <= 5 && (purple.length >= blue.length || blue.length + s <= purple.length + 1)) {
+                blue.push(...safeGroup);
+            } else if (purple.length + s <= 5) {
+                purple.push(...safeGroup);
+            }
+        }
+    }
+
+    function start5v5(){
+        const blue = document.getElementById('blueTeam');
+        const purple = document.getElementById('purpleTeam');
+        const bench = document.getElementById('sleepTeam');
+        blue.innerHTML=''; purple.innerHTML=''; bench.innerHTML='';
+
+        const players = members.filter(m=>!sleepList.includes(m.name)).map(m=>m.name);
+        if (players.length<2) { alert('至少2人'); return; }
+
+        let b=[], p=[], bn=[];
+        const allBind = bindGroups.flat();
+        const norm = players.filter(x=>!allBind.includes(x)&&x!==captain1&&x!==captain2);
+
+        if (currentMode==='captain') {
+            if (!captain1||!captain2) { alert('设置两名队长'); return; }
+            b.push(captain1);
+            p.push(captain2);
+            
+            // 队长捆绑进同队
+            assignCaptainBindGroup(b, captain1);
+            assignCaptainBindGroup(p, captain2);
         }
 
-        let blue = [], purple = [], bench = [];
+        // 普通捆绑分配
+        assignNormalBindGroups(b, p);
 
-        if (currentMode === "captain") {
-            if (!captain1 || !captain2) {
-                alert("请设置两名队长");
-                return;
-            }
-            if (!allPlayers.includes(captain1) || !allPlayers.includes(captain2)) {
-                alert("队长不能是困了/观战成员");
-                return;
-            }
-
-            blue.push(captain1);
-            purple.push(captain2);
-
-            let bindMembers = bindList.filter(b => b !== captain1 && b !== captain2);
-            let normalPlayers = allPlayers.filter(m => 
-                m !== captain1 && 
-                m !== captain2 && 
-                !bindMembers.includes(m)
-            );
-
-            if (bindMembers.length > 0) {
-                let targetTeam = Math.random() > 0.5 ? blue : purple;
-                bindMembers.forEach(p => targetTeam.push(p));
-            }
-
-            let shuffled = [...normalPlayers].sort(() => Math.random() - 0.5);
-            for (let p of shuffled) {
-                if (blue.length < 5) blue.push(p);
-                else if (purple.length < 5) purple.push(p);
-                else bench.push(p);
-            }
-        } else {
-            let shuffled = [...allPlayers].sort(() => Math.random() - 0.5);
-            blue = shuffled.slice(0, 5);
-            purple = shuffled.slice(5, 10);
-            bench = shuffled.slice(10);
+        // 随机分配
+        const shuf = [...norm].sort(()=>Math.random()-0.5);
+        for (const u of shuf) {
+            if (b.length<5) b.push(u);
+            else if (p.length<5) p.push(u);
+            else bn.push(u);
         }
 
-        renderTeam(blue, blueTeam);
-        renderTeam(purple, purpleTeam);
-        renderTeam(bench, sleepTeam);
-    }
+        // 最终去重
+        function show(teamList, el) {
+            const uniqueList = [...new Set(teamList)];
+            uniqueList.forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.textContent = name;
+                el.appendChild(div);
+            });
+        }
 
-    function renderTeam(team, element) {
-        element.innerHTML = '';
-        team.forEach(member => {
-            let div = document.createElement('div');
-            div.className = 'result-item';
-            div.textContent = member;
-            element.appendChild(div);
-        });
-    }
-
-    function clearResult() {
-        blueTeam.innerHTML = '';
-        purpleTeam.innerHTML = '';
-        sleepTeam.innerHTML = '';
+        show(b, blue);
+        show(p, purple);
+        show(bn, bench);
     }
 
     function copyResult() {
-        let text = "蓝队：\n" + Array.from(blueTeam.children).map(i => i.textContent).join("\n") + "\n\n紫队：\n" + Array.from(purpleTeam.children).map(i => i.textContent).join("\n") + "\n\n困了/观战：\n" + Array.from(sleepTeam.children).map(i => i.textContent).join("\n");
-        navigator.clipboard.writeText(text).then(() => {
-            alert("分组结果已复制到剪贴板");
-        }).catch(err => {
-            alert("复制失败：" + err);
-        });
+        const b = Array.from(document.getElementById('blueTeam').children).map(i=>i.textContent).join('\n');
+        const p = Array.from(document.getElementById('purpleTeam').children).map(i=>i.textContent).join('\n');
+        const s = Array.from(document.getElementById('sleepTeam').children).map(i=>i.textContent).join('\n');
+        const t = `蓝队：\n${b}\n\n紫队：\n${p}\n\n观战：\n${s}`;
+        navigator.clipboard.writeText(t).then(()=>alert('已复制')).catch(()=>alert('失败'));
     }
 
-    function switchMode(mode) {
-        currentMode = mode;
-        captainMode.classList.toggle('active', mode === 'captain');
-        normalMode.classList.toggle('active', mode === 'normal');
-        setCaptain1.style.display = mode === 'captain' ? 'inline-block' : 'none';
-        setCaptain2.style.display = mode === 'captain' ? 'inline-block' : 'none';
+    function switchMode(m){
+        currentMode=m;
+        document.getElementById('captainMode').classList.toggle('active',m==='captain');
+        document.getElementById('normalMode').classList.toggle('active',m==='normal');
+        document.getElementById('setCaptain1').style.display=m==='captain'?'inline-block':'none';
+        document.getElementById('setCaptain2').style.display=m==='captain'?'inline-block':'none';
     }
 
-    addBtn.addEventListener('click', addMember);
-    memberInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addMember();
-    });
-    clearBtn.addEventListener('click', clearMembers);
-    clearMark.addEventListener('click', clearAllMarks);
-    setCaptain1.addEventListener('click', setCaptain1Action);
-    setCaptain2.addEventListener('click', setCaptain2Action);
-    setBind.addEventListener('click', setBindAction);
-    setSleep.addEventListener('click', setSleepAction);
-    startBtn.addEventListener('click', start5v5);
-    copyBtn.addEventListener('click', copyResult);
-    captainMode.addEventListener('click', () => switchMode('captain'));
-    normalMode.addEventListener('click', () => switchMode('normal'));
+    document.getElementById('addBtn').onclick=addMember;
+    document.getElementById('memberInput').onkeypress=e=>e.key==='Enter'&&addMember();
+    document.getElementById('clearBtn').onclick=clearMembers;
+    document.getElementById('clearMark').onclick=clearAllMarks;
+    document.getElementById('setCaptain1').onclick=setCap1;
+    document.getElementById('setCaptain2').onclick=setCap2;
+    document.getElementById('setBind').onclick=setBind;
+    document.getElementById('setSleep').onclick=setSleep;
+    document.getElementById('startBtn').onclick=start5v5;
+    document.getElementById('copyBtn').onclick=copyResult;
+    document.getElementById('captainMode').onclick=()=>switchMode('captain');
+    document.getElementById('normalMode').onclick=()=>switchMode('normal');
 
-    initCommonPool();
-    renderMembers();
-    switchMode('captain');
+    window.onload = function() {
+        renderCommonPool();
+        renderMembers();
+        switchMode('captain');
+    };
 </script>
 </body>
 </html>
