@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5V5分组｜常用单独勾选加入</title>
+    <title>5V5分组｜常用单独添加+成员可单独删除</title>
     <style>
         * {
             box-sizing: border-box;
@@ -23,7 +23,7 @@
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1,h3 {
+        h1,h3,h4 {
             color: #333;
         }
         h1 {
@@ -68,15 +68,30 @@
         .green{background:#67c23a;} .green:hover{background:#529b2e;}
         .yellow{background:#e6a23c;} .yellow:hover{background:#cc8822;}
 
+        /* 右侧常用备选 */
         .pool-item{
             display:inline-block;padding:5px 10px;margin:4px;border-radius:4px;
             background:#e8f4ff;cursor:pointer;font-size:14px;
         }
         .pool-item:hover{background:#cde4ff;}
 
+        /* 分组列表成员 + 删除按钮 */
         .member-wrap{margin:15px 0;padding:15px;border:1px solid #eee;border-radius:8px;}
         .member-item{
-            display:inline-block;padding:6px 12px;margin:5px;border-radius:4px;cursor:pointer;background:#e1f5fe;
+            display:inline-flex; align-items:center;
+            padding:6px 10px;margin:5px;border-radius:4px;
+            cursor:pointer;background:#e1f5fe;
+        }
+        .member-item .del-btn{
+            margin-left:8px;
+            width:18px;height:18px;
+            line-height:18px;
+            text-align:center;
+            background:#ff4d4f;
+            color:white;
+            border-radius:50%;
+            font-size:12px;
+            cursor:pointer;
         }
         .bind{background:#67c23a;color:#fff;}
         .cap1{background:#409eff;color:#fff;}
@@ -92,12 +107,11 @@
 </head>
 <body>
 <div class="container">
-    <h1>5V5队长对战分组｜常用可单独勾选添加</h1>
+    <h1>5V5队长对战分组｜常用单独添加+可删单个成员</h1>
 
     <div class="two-col">
-        <!-- 左边：当前分组池 -->
         <div class="col-left">
-            <div class="tip">💡 操作：选人→设队长/捆绑/困了 → 开始5V5</div>
+            <div class="tip">💡 操作：右侧常用点选加入 → 可单独删成员 → 设队长/捆绑 → 5V5分组</div>
 
             <div class="member-input">
                 <input type="text" id="memberName" placeholder="手动新增临时成员">
@@ -114,15 +128,15 @@
             </div>
 
             <div class="member-wrap">
-                <h4>📋 当前已加入分组列表：</h4>
+                <h4>📋 当前已加入分组列表（点×单独删除）：</h4>
                 <div id="memberList"></div>
             </div>
         </div>
 
-        <!-- 右边：常用备选库（单独点选添加） -->
+        <!-- 右侧常用备选 -->
         <div class="col-right">
-            <h4>⭐ 常用备选（点击单个加入分组）</h4>
-            <div class="tip">点名字逐个加入列表，不自动全加</div>
+            <h4>⭐ 常用备选（点击加入分组）</h4>
+            <div class="tip">点名字逐个加入，不自动全加</div>
             <div id="commonPool"></div>
         </div>
     </div>
@@ -140,24 +154,26 @@
 </div>
 
 <script>
-// 固定常用备选库（右侧单独点击添加）
-const commonPoolList = ["饿","比巴卜","养猪","faker","谈无欲","管家","卡少","帅帅","阿炜","迷惑猫"];
+// 常用备选库
+const commonPoolList = ["饿","比巴卜","养猪","faker","谈无欲","管家","卡少","帅帅","阿炜","小菜鸟","迷惑猫","面包猪","小猪","猪头","落霞","马沿见","公子隐","古冬灵"];
 
-let members = [];        // 当前已加入分组池
+let members = [];        // 分组列表
 let bindList = [];
 let captain1 = "";
 let captain2 = "";
 let sleepList = [];
 let tempSelected = [];
 
+// 回车添加
 document.getElementById('memberName').addEventListener('keypress',e=>e.key==='Enter'&&addMember());
 
+// 初始化
 window.onload = function(){
     renderCommonPool();
     renderList();
 };
 
-// 渲染右侧常用备选区（点击单个加入）
+// 渲染右侧常用库
 function renderCommonPool(){
     let html = "";
     commonPoolList.forEach(name=>{
@@ -166,14 +182,14 @@ function renderCommonPool(){
     document.getElementById("commonPool").innerHTML = html;
 }
 
-// 点击常用单个名字 → 加入当前分组列表
+// 从常用库添加到分组
 function addCommonToPool(name){
-    if(members.includes(name)) return alert("该成员已在分组列表里！");
+    if(members.includes(name)) return alert("已在分组列表！");
     members.push(name);
     renderList();
 }
 
-// 手动新增临时成员
+// 手动添加成员
 function addMember(){
     let n = document.getElementById('memberName').value.trim();
     if(!n)return alert('输入名字');
@@ -183,7 +199,19 @@ function addMember(){
     renderList();
 }
 
-// 渲染当前分组池标签
+// 单独删除成员
+function deleteMember(name){
+    if(!confirm(`确定删除【${name}】？`)) return;
+    members = members.filter(x=>x!==name);
+    if(captain1===name) captain1="";
+    if(captain2===name) captain2="";
+    bindList = bindList.filter(x=>x!==name);
+    sleepList = sleepList.filter(x=>x!==name);
+    tempSelected = tempSelected.filter(x=>x!==name);
+    renderList();
+}
+
+// 渲染分组列表（带删除按钮）
 function renderList(){
     let html = '';
     members.forEach(name=>{
@@ -193,34 +221,45 @@ function renderList(){
         if(captain1===name) cls="member-item cap1";
         if(captain2===name) cls="member-item cap2";
         if(sleepList.includes(name)) cls="member-item sleep";
-        html += `<span class="${cls}" onclick="clickName('${name}')">${name}</span>`;
+        
+        html += `
+        <div class="${cls}">
+            ${name}
+            <div class="del-btn" onclick="event.stopPropagation();deleteMember('${name}')">×</div>
+        </div>`;
     });
     document.getElementById('memberList').innerHTML = html;
 }
 
+// 点击成员选中
 function clickName(name){
-    tempSelected = tempSelected.includes(name) ? tempSelected.filter(x=>x!==name) : [name];
+    tempSelected = tempSelected.includes(name) 
+        ? tempSelected.filter(x=>x!==name) 
+        : [name];
     renderList();
 }
 
+// 设置队长1
 function setCaptain1(){
     if(tempSelected.length!==1)return alert('先选中1个人');
     let n = tempSelected[0];
-    if(sleepList.includes(n)||bindList.includes(n))return alert('已有其他标记');
+    if(sleepList.includes(n)||bindList.includes(n))return alert('已有标记');
     captain1 = n; tempSelected=[]; renderList();
 }
 
+// 设置队长2
 function setCaptain2(){
     if(tempSelected.length!==1)return alert('先选中1个人');
     let n = tempSelected[0];
     if(n===captain1)return alert('不能同一个人');
-    if(sleepList.includes(n)||bindList.includes(n))return alert('已有其他标记');
+    if(sleepList.includes(n)||bindList.includes(n))return alert('已有标记');
     captain2 = n; tempSelected=[]; renderList();
 }
 
+// 捆绑同组
 function setBind(){
     if(tempSelected.length===0)return alert('先选人');
-    if(bindList.length + tempSelected.length >3)return alert('捆绑最多3人');
+    if(bindList.length + tempSelected.length >3)return alert('最多捆绑3人');
     tempSelected.forEach(n=>{
         if(captain1===n||captain2===n||sleepList.includes(n))return;
         if(!bindList.includes(n)) bindList.push(n);
@@ -228,6 +267,7 @@ function setBind(){
     tempSelected=[]; renderList();
 }
 
+// 设为困了观战
 function setSleepSelected(){
     if(tempSelected.length===0)return alert('先选人');
     tempSelected.forEach(n=>{
@@ -239,22 +279,25 @@ function setSleepSelected(){
     tempSelected=[]; renderList();
 }
 
+// 清空所有标记
 function clearAllTag(){
     bindList=[];captain1="";captain2="";sleepList=[];tempSelected=[];renderList();
 }
 
+// 清空分组池
 function emptyAllPool(){
-    if(!confirm("清空当前所有已加入的成员？常用库还在右侧！"))return;
+    if(!confirm("清空当前所有成员？常用库保留！"))return;
     members=[];clearAllTag();clearResultBox();renderList();
 }
 
+// 清空结果
 function clearResultBox(){
     document.getElementById('team1').innerHTML='<h3>蓝队（5人）</h3>';
     document.getElementById('team2').innerHTML='<h3>紫队（5人）</h3>';
     document.getElementById('sleepBox').innerHTML='<h3>😴 困了 / 观战躺平</h3>';
 }
 
-// 核心5V5分组
+// 5V5核心分组
 function start5v5(){
     if(!captain1||!captain2)return alert('必须设置两名队长！');
     let fightAll = members.filter(x=>!sleepList.includes(x));
@@ -277,10 +320,11 @@ function start5v5(){
     document.getElementById('sleepBox').innerHTML=sHtml;
 }
 
+// 复制结果
 function copyResult(){
     let txt = document.getElementById('team1').innerText+"\n"+document.getElementById('team2').innerText+"\n"+document.getElementById('sleepBox').innerText;
     if(!txt)return alert('还没生成分组');
-    navigator.clipboard.writeText(txt).then(()=>alert('已复制'));
+    navigator.clipboard.writeText(txt).then(()=>alert('已复制到剪贴板'));
 }
 </script>
 </body>
