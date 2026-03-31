@@ -636,7 +636,7 @@
     }
 
     function copyResult() {
-        let text = "蓝队：\n" + Array.from(blueTeam.children).map(i => i.textContent).join("\n") + "\n\n紫队：\n" + Array.from(purpleTeam.children).map(i => i.textContent).join("\n") + "\n\n困了/观战：\n" + Array.from(sleepTeam.children).map(i => i.textContent).join("\n";
+        let text = "蓝队：\n" + Array.from(blueTeam.children).map(i => i.textContent).join("\n") + "\n\n紫队：\n" + Array.from(purpleTeam.children).map(i => i.textContent).join("\n") + "\n\n困了/观战：\n" + Array.from(sleepTeam.children).map(i => i.textContent).join("\n");
         navigator.clipboard.writeText(text).then(() => {
             alert("分组结果已复制到剪贴板");
         }).catch(err => {
@@ -667,6 +667,7 @@
     captainMode.addEventListener('click', () => switchMode('captain'));
     normalMode.addEventListener('click', () => switchMode('normal'));
 
+    // 初始化加载常用名单
     initCommonPool();
     renderMembers();
     switchMode('captain');
