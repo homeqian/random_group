@@ -536,8 +536,12 @@
             if (captain1===n) captain1=null;
             if (captain2===n) captain2=null;
         });
-        sleepList = [...tempSelected];
-        bindGroups = bindGroups.map(g=>g.filter(n=>!tempSelected.includes(n))).filter(g=>g.length);
+        // 追加而非替换，避免覆盖已有观战成员
+        tempSelected.forEach(n => {
+            if (!sleepList.includes(n)) sleepList.push(n);
+        });
+        // 过滤掉不足2人的捆绑组
+        bindGroups = bindGroups.map(g=>g.filter(n=>!tempSelected.includes(n))).filter(g=>g.length>=2);
         tempSelected=[]; renderAll();
     }
 
@@ -552,11 +556,12 @@
         }
     }
 
-    // 普通捆绑组
+    // 普通捆绑组，返回无法装入两队的成员
     function assignNormalBindGroups(blue, purple) {
-        const normalGroups = bindGroups.filter(g => 
+        const normalGroups = bindGroups.filter(g =>
             !g.includes(captain1) && !g.includes(captain2)
         );
+        const unassigned = [];
         for (const g of normalGroups) {
             const safeGroup = g.filter(n => !blue.includes(n) && !purple.includes(n));
             const s = safeGroup.length;
@@ -566,8 +571,12 @@
                 blue.push(...safeGroup);
             } else if (purple.length + s <= 5) {
                 purple.push(...safeGroup);
+            } else {
+                // 两队都装不下，放入未分配（后续归入观战区）
+                unassigned.push(...safeGroup);
             }
         }
+        return unassigned;
     }
 
     function start5v5(){
@@ -581,7 +590,10 @@
 
         let b=[], p=[], bn=[];
         const allBind = bindGroups.flat();
-        const norm = players.filter(x=>!allBind.includes(x)&&x!==captain1&&x!==captain2);
+        // 非队长模式下不排除已设队长
+        const norm = currentMode === 'captain'
+            ? players.filter(x=>!allBind.includes(x)&&x!==captain1&&x!==captain2)
+            : players.filter(x=>!allBind.includes(x));
 
         if (currentMode==='captain') {
             if (!captain1||!captain2) { alert('设置两名队长'); return; }
@@ -593,8 +605,9 @@
             assignCaptainBindGroup(p, captain2);
         }
 
-        // 普通捆绑分配
-        assignNormalBindGroups(b, p);
+        // 普通捆绑分配，收集未分配的成员
+        const unassignedBind = assignNormalBindGroups(b, p);
+        bn.push(...unassignedBind);
 
         // 随机分配
         const shuf = [...norm].sort(()=>Math.random()-0.5);
@@ -603,6 +616,11 @@
             else if (p.length<5) p.push(u);
             else bn.push(u);
         }
+
+        // 手动标记的观战成员也显示在观战区
+        sleepList.forEach(name => {
+            if (!bn.includes(name)) bn.push(name);
+        });
 
         // 最终去重
         function show(teamList, el) {
@@ -618,6 +636,10 @@
         show(b, blue);
         show(p, purple);
         show(bn, bench);
+
+        // 清除选中状态
+        tempSelected = [];
+        renderMembers();
     }
 
     function copyResult() {
